@@ -15,7 +15,19 @@ jobs:
           go-version: "1.22"
       - name: go test
         run: go test ./...
-      - name: mock probes
-        run: go run ./cmd/toolprobe run --mock --probes probes/default --min-pass 1.0
+      - name: mock probes + baseline
+        run: |
+          go run ./cmd/toolprobe run --mock --probes probes/default --min-pass 1.0 \
+            --baseline toolprobe-baseline.json \
+            --html scorecard.html
       - name: mock probes with repeat
         run: go run ./cmd/toolprobe run --mock --probes probes/default --repeat 2 --min-pass 1.0
+      - name: render scorecard from last report
+        run: go run ./cmd/toolprobe report --last --out scorecard.html
+      - name: upload scorecard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scorecard
+          path: scorecard.html
+          if-no-files-found: ignore
