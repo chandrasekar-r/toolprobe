@@ -1,0 +1,34 @@
+name: select_weather_not_search
+description: Multi-tool selection — pick get_weather, not web_search or calculator.
+system: Use the most appropriate tool. Prefer tools over guessing.
+user: What is the current temperature in Paris in celsius?
+tools:
+  - name: web_search
+    description: Search the web
+    parameters:
+      type: object
+      properties:
+        query: { type: string }
+      required: [query]
+  - name: calculator
+    description: Math
+    parameters:
+      type: object
+      properties:
+        expression: { type: string }
+      required: [expression]
+  - name: get_weather
+    description: Get weather for a city
+    parameters:
+      type: object
+      properties:
+        city: { type: string }
+        units: { type: string }
+      required: [city, units]
+expect:
+  tool_name: get_weather
+  args: { city: Paris, units: celsius }
+mock:
+  mode: tool_calls
+  tool_name: get_weather
+  args: { city: Paris, units: celsius }

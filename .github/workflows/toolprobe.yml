@@ -1,0 +1,21 @@
+name: toolprobe
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: go test
+        run: go test ./...
+      - name: mock probes
+        run: go run ./cmd/toolprobe run --mock --probes probes/default --min-pass 1.0
+      - name: mock probes with repeat
+        run: go run ./cmd/toolprobe run --mock --probes probes/default --repeat 2 --min-pass 1.0

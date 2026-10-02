@@ -1,0 +1,21 @@
+name: latency_budget_fast
+description: Latency budget — mock responds quickly; fail if over max_latency_ms.
+user: Quick weather for Berlin in celsius.
+tools:
+  - name: get_weather
+    description: Get weather
+    parameters:
+      type: object
+      properties:
+        city: { type: string }
+        units: { type: string }
+      required: [city, units]
+expect:
+  tool_name: get_weather
+  args: { city: Berlin, units: celsius }
+  max_latency_ms: 200
+mock:
+  mode: tool_calls
+  latency_ms: 1
+  tool_name: get_weather
+  args: { city: Berlin, units: celsius }

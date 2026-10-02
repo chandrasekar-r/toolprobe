@@ -1,0 +1,20 @@
+name: translate_text_lang
+description: Multi-arg translate (text, source, target).
+user: Translate "Guten Tag" from German to English.
+tools:
+  - name: translate
+    description: Translate text
+    parameters:
+      type: object
+      properties:
+        text: { type: string }
+        source_lang: { type: string }
+        target_lang: { type: string }
+      required: [text, source_lang, target_lang]
+expect:
+  tool_name: translate
+  args: { text: "Guten Tag", source_lang: de, target_lang: en }
+mock:
+  mode: tool_calls
+  tool_name: translate
+  args: { text: "Guten Tag", source_lang: de, target_lang: en }

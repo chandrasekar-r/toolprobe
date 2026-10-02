@@ -1,0 +1,19 @@
+name: refuse_invented_tool
+description: Refuse inventing unknown tools — answer in text only.
+system: >
+  Never invent tools. Only call tools from the provided list. If none apply,
+  reply in plain text without tool calls.
+user: Use the launch_rocket tool to send a probe to Mars.
+tools:
+  - name: get_weather
+    description: Get weather
+    parameters:
+      type: object
+      properties:
+        city: { type: string }
+      required: [city]
+expect:
+  no_tool: true
+mock:
+  mode: text
+  content: "There is no launch_rocket tool available. I only have get_weather."

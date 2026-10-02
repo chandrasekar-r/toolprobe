@@ -10,17 +10,13 @@ tools:
     parameters:
       type: object
       properties:
-        city:
-          type: string
-          description: City name
-        units:
-          type: string
-          description: Temperature units
-          enum: [celsius, fahrenheit]
+        city: { type: string }
+        units: { type: string, enum: [celsius, fahrenheit] }
       required: [city, units]
-      additionalProperties: false
 expect:
   tool_name: get_weather
-  args:
-    city: Berlin
-    units: celsius
+  args: { city: Berlin, units: celsius }
+mock:
+  mode: tool_calls
+  tool_name: get_weather
+  args: { city: Berlin, units: celsius }

@@ -1,0 +1,26 @@
+name: email_send_fields
+description: Multi-arg email send (to, subject, body).
+user: Send an email to ops@example.com with subject "Deploy done" and body "v0.1 is live."
+tools:
+  - name: send_email
+    description: Send an email
+    parameters:
+      type: object
+      properties:
+        to: { type: string }
+        subject: { type: string }
+        body: { type: string }
+      required: [to, subject, body]
+expect:
+  tool_name: send_email
+  args:
+    to: ops@example.com
+    subject: "Deploy done"
+    body: "v0.1 is live."
+mock:
+  mode: tool_calls
+  tool_name: send_email
+  args:
+    to: ops@example.com
+    subject: "Deploy done"
+    body: "v0.1 is live."

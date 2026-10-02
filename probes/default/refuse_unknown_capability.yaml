@@ -1,0 +1,26 @@
+name: refuse_unknown_capability
+description: Refuse / no-tool when asked for a capability not in the tool list.
+system: >
+  You only have the tools listed. If the user asks for something you cannot
+  do with those tools, answer in text and do NOT invent or call unknown tools.
+user: Please book me a flight from Berlin to Tokyo next Friday.
+tools:
+  - name: get_weather
+    description: Get weather
+    parameters:
+      type: object
+      properties:
+        city: { type: string }
+      required: [city]
+  - name: web_search
+    description: Search
+    parameters:
+      type: object
+      properties:
+        query: { type: string }
+      required: [query]
+expect:
+  no_tool: true
+mock:
+  mode: text
+  content: "I don't have a flight booking tool. I can check weather or search the web instead."

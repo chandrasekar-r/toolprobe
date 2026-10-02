@@ -1,0 +1,26 @@
+name: parallel_two_cities
+description: Parallel / multi-tool — two get_weather calls in one turn.
+system: When asked for multiple cities, call get_weather once per city in parallel.
+user: Get the weather in Berlin and Paris, both in celsius.
+tools:
+  - name: get_weather
+    description: Get weather
+    parameters:
+      type: object
+      properties:
+        city: { type: string }
+        units: { type: string }
+      required: [city, units]
+expect:
+  calls:
+    - tool_name: get_weather
+      args: { city: Berlin, units: celsius }
+    - tool_name: get_weather
+      args: { city: Paris, units: celsius }
+mock:
+  mode: tool_calls
+  tool_calls:
+    - name: get_weather
+      args: { city: Berlin, units: celsius }
+    - name: get_weather
+      args: { city: Paris, units: celsius }

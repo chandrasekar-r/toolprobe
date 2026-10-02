@@ -1,0 +1,18 @@
+name: calculator_expression
+description: Simple calculator tool call with expression arg.
+user: What is 17 * 23?
+tools:
+  - name: calculator
+    description: Evaluate a math expression
+    parameters:
+      type: object
+      properties:
+        expression: { type: string }
+      required: [expression]
+expect:
+  tool_name: calculator
+  args: { expression: "17 * 23" }
+mock:
+  mode: tool_calls
+  tool_name: calculator
+  args: { expression: "17 * 23" }

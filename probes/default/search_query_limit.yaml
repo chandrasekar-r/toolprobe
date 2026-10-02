@@ -1,0 +1,20 @@
+name: search_query_limit
+description: Multi-arg schema — query, limit, language.
+user: Search the web for "Go cobra CLI" and return at most 5 results in English.
+tools:
+  - name: web_search
+    description: Search the web
+    parameters:
+      type: object
+      properties:
+        query: { type: string }
+        limit: { type: integer }
+        language: { type: string }
+      required: [query, limit, language]
+expect:
+  tool_name: web_search
+  args: { query: "Go cobra CLI", limit: 5, language: en }
+mock:
+  mode: tool_calls
+  tool_name: web_search
+  args: { query: "Go cobra CLI", limit: 5, language: en }

@@ -1,0 +1,19 @@
+name: weather_fahrenheit
+description: Multi-arg weather with fahrenheit units.
+user: Weather in Tokyo please, use fahrenheit.
+tools:
+  - name: get_weather
+    description: Get weather
+    parameters:
+      type: object
+      properties:
+        city: { type: string }
+        units: { type: string, enum: [celsius, fahrenheit] }
+      required: [city, units]
+expect:
+  tool_name: get_weather
+  args: { city: Tokyo, units: fahrenheit }
+mock:
+  mode: tool_calls
+  tool_name: get_weather
+  args: { city: Tokyo, units: fahrenheit }
