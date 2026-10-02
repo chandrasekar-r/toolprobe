@@ -14,7 +14,7 @@ Models drift. Prompts change. Providers disagree on tool schemas. You need a reg
 go install github.com/chandrasekar-r/toolprobe/cmd/toolprobe@latest
 ```
 
-Or build from source:
+Or from source:
 
 ```bash
 git clone https://github.com/chandrasekar-r/toolprobe.git
@@ -24,15 +24,14 @@ go build -o toolprobe ./cmd/toolprobe
 
 ## Quick start (mock / dry-run)
 
-No API key, no network — validates the harness and default probe:
+No API key, no network — each probe’s `mock:` block drives the response:
 
 ```bash
 toolprobe run --mock --probes probes/default
-# or from repo root after build:
-./toolprobe run --mock
+./toolprobe run --mock --repeat 3 --min-pass 1.0
 ```
 
-Exit code `0` if all probes pass.
+Exit code `0` if pass rate ≥ `--min-pass` (default `1.0`).
 
 ## Live run
 
@@ -41,49 +40,76 @@ export TOOLPROBE_API_KEY=sk-...
 toolprobe run \
   --base-url https://api.openai.com/v1 \
   --model gpt-4o-mini \
-  --probes probes/default
+  --probes probes/default \
+  --repeat 3 \
+  --min-pass 0.8
 ```
 
-Flags also accept `--api-key`. JSON report:
+JSON report: `toolprobe run --mock --json`.
 
-```bash
-toolprobe run --mock --json
-```
+## Default probes (`probes/default/`)
+
+| Probe | What it checks |
+|-------|----------------|
+| `weather_city_units` | Correct tool + city/units args |
+| `weather_fahrenheit` | Multi-arg units variant |
+| `search_query_limit` | Multi-arg schema (query, limit, language) |
+| `calculator_expression` | Simple expression tool |
+| `select_weather_not_search` | Multi-tool selection (pick weather, not search) |
+| `refuse_unknown_capability` | No tool when capability missing |
+| `refuse_invented_tool` | Refuse invented / unknown tool names |
+| `parallel_two_cities` | Parallel multi-tool (two weather calls) |
+| `calendar_create_event` | Multi-arg datetime event create |
+| `email_send_fields` | Multi-arg to/subject/body |
+| `translate_text_lang` | Multi-arg translate |
+| `latency_budget_fast` | `max_latency_ms` budget (mockable) |
+
+Empty / malformed args and wrong-tool paths are covered in unit tests (`internal/probes`) via mock modes `empty_args`, `malformed_args`, and `wrong_tool`.
 
 ## Probe format
-
-YAML under `probes/` (see `probes/default/weather_city_units.yaml`):
 
 ```yaml
 name: weather_city_units
 user: What is the weather in Berlin in celsius?
 tools:
   - name: get_weather
-    description: Get the current weather for a city.
     parameters:
       type: object
       properties:
         city: { type: string }
-        units: { type: string, enum: [celsius, fahrenheit] }
+        units: { type: string }
       required: [city, units]
 expect:
   tool_name: get_weather
-  args:
-    city: Berlin
-    units: celsius
+  args: { city: Berlin, units: celsius }
+  # optional: no_tool: true | calls: [...] | max_latency_ms: 200
+mock:
+  mode: tool_calls   # tool_calls | text | empty_args | malformed_args | wrong_tool
+  tool_name: get_weather
+  args: { city: Berlin, units: celsius }
 ```
 
-Expected args are matched as a subset (extra keys from the model are OK).
+Expected args are matched as a subset (extra keys OK). Multi-call expects are order-insensitive.
+
+## CI
+
+GitHub Actions workflow: `.github/workflows/toolprobe.yml`
+
+```yaml
+- run: go test ./...
+- run: go run ./cmd/toolprobe run --mock --probes probes/default --min-pass 1.0
+```
 
 ## Layout
 
 ```
-cmd/toolprobe/          CLI (cobra)
-internal/client/        OpenAI-compatible chat + tools (+ mock)
-internal/probes/        Probe / ProbeResult, YAML load, runner
+cmd/toolprobe/          CLI (cobra) — --mock --repeat --min-pass --json
+internal/client/        OpenAI-compatible chat + tools
+internal/probes/        Probe / mock / runner / YAML load
 internal/score/         Pass rate + latency aggregate
 internal/report/        JSON report
 probes/default/         Shipping probes
+.github/workflows/      CI
 ```
 
 ## License
