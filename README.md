@@ -1,5 +1,9 @@
 # toolprobe
 
+[![CI](https://github.com/chandrasekar-r/toolprobe/actions/workflows/toolprobe.yml/badge.svg)](https://github.com/chandrasekar-r/toolprobe/actions/workflows/toolprobe.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?logo=go)](https://go.dev/)
+
 **CI for tool calling.** A small Go CLI that probes LLM tool-calling reliability against OpenAI-compatible `chat/completions` endpoints (with tools). Assert correct tool names and JSON arguments. Exit 0 on pass, 1 on fail — drop it into a pipeline.
 
 Built in Berlin by an AI engineer who got tired of “it usually calls the tool.”
@@ -10,16 +14,28 @@ Built in Berlin by an AI engineer who got tired of “it usually calls the tool.
 go install github.com/chandrasekar-r/toolprobe/cmd/toolprobe@latest
 ```
 
-From source / release binaries (via GoReleaser):
+From source:
 
 ```bash
 git clone https://github.com/chandrasekar-r/toolprobe.git
 cd toolprobe
 go build -o toolprobe ./cmd/toolprobe
-
-# multi-arch archives (requires goreleaser):
-# goreleaser release --snapshot --clean
 ```
+
+### Snapshot / release binaries (GoReleaser)
+
+Multi-arch archives (linux / darwin / windows × amd64 / arm64):
+
+```bash
+# requires: go install github.com/goreleaser/goreleaser/v2@latest
+goreleaser release --snapshot --clean
+# → dist/toolprobe_*_{Linux,Darwin,Windows}_{x86_64,arm64}.{tar.gz,zip}
+tar -xzf dist/toolprobe_*_Linux_x86_64.tar.gz
+./toolprobe run --mock
+```
+
+GitHub Releases (when tagged): download the archive for your OS/arch from
+https://github.com/chandrasekar-r/toolprobe/releases — checksums in `checksums.txt`.
 
 ## Quick start (mock)
 
@@ -35,10 +51,10 @@ Example output:
 
 ```
 [PASS] weather_city_units (0.1ms)
-[PASS] select_weather_not_search (0.0ms)
-[PASS] refuse_unknown_capability (0.0ms)
+[PASS] enum_status_filter (0.0ms)
+[PASS] nested_address_geocode (0.0ms)
 ...
-12/12 passed (100%)  avg latency 0.1ms  min-pass 100%
+17/17 passed (100%)  avg latency 0.1ms  min-pass 100%
 baseline OK (toolprobe-baseline.json)
 wrote scorecard.html
 ```
@@ -87,8 +103,13 @@ toolprobe run --mock --html scorecard.html
 |-------|----------------|
 | `weather_city_units` | Correct tool + city/units args |
 | `weather_fahrenheit` | Multi-arg units variant |
+| `optional_units_omitted` | Required vs optional (units omitted) |
 | `search_query_limit` | Multi-arg schema (query, limit, language) |
 | `calculator_expression` | Simple expression tool |
+| `enum_status_filter` | Enum arg (`open\|closed\|all`) |
+| `enum_sort_direction` | Enum + required multi-arg sort |
+| `nested_address_geocode` | Nested object (`address.*`) |
+| `nested_order_items` | Nested array of objects (line items) |
 | `select_weather_not_search` | Multi-tool selection |
 | `refuse_unknown_capability` | No tool when capability missing |
 | `refuse_invented_tool` | Refuse invented tool names |
@@ -110,6 +131,10 @@ GitHub Actions: `.github/workflows/toolprobe.yml`
 - run: go run ./cmd/toolprobe report --last
 ```
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Release
 
 `.goreleaser.yml` builds linux/darwin/windows (`amd64`/`arm64`, CGO off). Snapshot:
@@ -127,9 +152,10 @@ internal/probes/         Probe / mock / runner
 internal/baseline/       Regression baseline
 internal/score/          Pass rate + latency
 internal/report/         JSON + static HTML scorecard
-probes/default/          Shipping probes
+probes/default/          Shipping probes (17)
 .goreleaser.yml          Multi-arch binaries
 toolprobe-baseline.json  Checked-in mock baseline
+CONTRIBUTING.md          How to add probes
 ```
 
 ## License
