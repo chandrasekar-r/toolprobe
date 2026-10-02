@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "model": "gpt-4o-mini",
+  "mock": true,
+  "pass_rate": 1,
+  "total": 12,
+  "passed": 12,
+  "failed": 0,
+  "avg_latency_ms": 0,
+  "probes": {
+    "calculator_expression": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    },
+    "calendar_create_event": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    },
+    "email_send_fields": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    },
+    "latency_budget_fast": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    },
+    "parallel_two_cities": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    },
+    "refuse_invented_tool": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    },
+    "refuse_unknown_capability": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    },
+    "search_query_limit": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    },
+    "select_weather_not_search": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    },
+    "translate_text_lang": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    },
+    "weather_city_units": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    },
+    "weather_fahrenheit": {
+      "runs": 1,
+      "passed": 1,
+      "pass_rate": 1
+    }
+  }
+}
