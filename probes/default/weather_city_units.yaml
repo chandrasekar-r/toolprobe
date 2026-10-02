@@ -1,0 +1,26 @@
+name: weather_city_units
+description: Assert model calls get_weather with city and units.
+system: >
+  You are a helpful assistant. When the user asks about weather, you MUST call
+  the get_weather tool. Do not answer without a tool call.
+user: What is the weather in Berlin in celsius?
+tools:
+  - name: get_weather
+    description: Get the current weather for a city.
+    parameters:
+      type: object
+      properties:
+        city:
+          type: string
+          description: City name
+        units:
+          type: string
+          description: Temperature units
+          enum: [celsius, fahrenheit]
+      required: [city, units]
+      additionalProperties: false
+expect:
+  tool_name: get_weather
+  args:
+    city: Berlin
+    units: celsius
