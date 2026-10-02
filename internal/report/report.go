@@ -16,6 +16,8 @@ type Report struct {
 	GeneratedAt time.Time            `json:"generated_at"`
 	Model       string               `json:"model"`
 	Mock        bool                 `json:"mock"`
+	Repeat      int                  `json:"repeat"`
+	MinPass     float64              `json:"min_pass"`
 	Summary     score.Summary        `json:"summary"`
 	Results     []probes.ProbeResult `json:"results"`
 }
