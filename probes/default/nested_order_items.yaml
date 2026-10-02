@@ -1,0 +1,31 @@
+name: nested_order_items
+description: Nested array of objects — order items with sku and qty.
+user: Create an order with 2x SKU-ABC and 1x SKU-XYZ.
+tools:
+  - name: create_order
+    description: Create an order with line items
+    parameters:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              sku: { type: string }
+              qty: { type: integer }
+            required: [sku, qty]
+      required: [items]
+expect:
+  tool_name: create_order
+  args:
+    items:
+      - { sku: SKU-ABC, qty: 2 }
+      - { sku: SKU-XYZ, qty: 1 }
+mock:
+  mode: tool_calls
+  tool_name: create_order
+  args:
+    items:
+      - { sku: SKU-ABC, qty: 2 }
+      - { sku: SKU-XYZ, qty: 1 }
