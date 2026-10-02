@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/chandrasekar-r/toolprobe/internal/client"
@@ -176,41 +175,4 @@ func argsMatch(got, want map[string]interface{}) bool {
 		}
 	}
 	return true
-}
-
-func valuesEqual(a, b interface{}) bool {
-	na, okA := toFloat(a)
-	nb, okB := toFloat(b)
-	if okA && okB {
-		return na == nb
-	}
-	sa, okA := a.(string)
-	sb, okB := b.(string)
-	if okA && okB {
-		return sa == sb
-	}
-	ba, okA := a.(bool)
-	bb, okB := b.(bool)
-	if okA && okB {
-		return ba == bb
-	}
-	return reflect.DeepEqual(a, b)
-}
-
-func toFloat(v interface{}) (float64, bool) {
-	switch n := v.(type) {
-	case float64:
-		return n, true
-	case float32:
-		return float64(n), true
-	case int:
-		return float64(n), true
-	case int64:
-		return float64(n), true
-	case json.Number:
-		f, err := n.Float64()
-		return f, err == nil
-	default:
-		return 0, false
-	}
 }
