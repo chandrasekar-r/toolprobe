@@ -1,0 +1,22 @@
+name: enum_sort_direction
+description: Enum sort direction with required field name.
+user: Sort the users table by created_at descending.
+tools:
+  - name: sort_table
+    description: Sort a table by a field
+    parameters:
+      type: object
+      properties:
+        table: { type: string }
+        field: { type: string }
+        direction:
+          type: string
+          enum: [asc, desc]
+      required: [table, field, direction]
+expect:
+  tool_name: sort_table
+  args: { table: users, field: created_at, direction: desc }
+mock:
+  mode: tool_calls
+  tool_name: sort_table
+  args: { table: users, field: created_at, direction: desc }
