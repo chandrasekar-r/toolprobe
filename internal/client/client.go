@@ -80,7 +80,8 @@ type Client struct {
 	BaseURL    string
 	APIKey     string
 	HTTPClient *http.Client
-	Mock       bool
+	// Mock skips network; Runner synthesizes responses from probe.mock.
+	Mock bool
 }
 
 // New creates a client. baseURL should be like https://api.openai.com/v1 (no trailing slash required).
@@ -95,10 +96,10 @@ func New(baseURL, apiKey string) *Client {
 }
 
 // ChatCompletion sends a chat request and returns the response.
-// In Mock mode, returns a canned weather tool call without network I/O.
+// When Mock is true, returns an error — use probes.SynthesizeMock via Runner instead.
 func (c *Client) ChatCompletion(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	if c.Mock {
-		return mockWeatherResponse(req), nil
+		return nil, fmt.Errorf("client is in mock mode; use probes.Runner which synthesizes from probe.mock")
 	}
 	if c.BaseURL == "" {
 		return nil, fmt.Errorf("base-url is required (or use --mock)")
@@ -146,46 +147,4 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "..."
-}
-
-// mockWeatherResponse returns a successful get_weather tool call for the default probe.
-func mockWeatherResponse(req ChatRequest) *ChatResponse {
-	city := "Berlin"
-	units := "celsius"
-	// Best-effort: pull hints from user message if present.
-	for _, m := range req.Messages {
-		if m.Role != "user" {
-			continue
-		}
-		lower := strings.ToLower(m.Content)
-		if strings.Contains(lower, "fahrenheit") {
-			units = "fahrenheit"
-		}
-		if strings.Contains(lower, "berlin") {
-			city = "Berlin"
-		} else if strings.Contains(lower, "paris") {
-			city = "Paris"
-		} else if strings.Contains(lower, "tokyo") {
-			city = "Tokyo"
-		}
-	}
-	args, _ := json.Marshal(map[string]string{"city": city, "units": units})
-	return &ChatResponse{
-		ID: "mock-chatcmpl",
-		Choices: []Choice{{
-			Index: 0,
-			Message: Message{
-				Role: "assistant",
-				ToolCalls: []ToolCall{{
-					ID:   "call_mock_weather",
-					Type: "function",
-					Function: FunctionCall{
-						Name:      "get_weather",
-						Arguments: string(args),
-					},
-				}},
-			},
-			FinishReason: "tool_calls",
-		}},
-	}
 }
