@@ -1,0 +1,22 @@
+name: enum_status_filter
+description: Enum arg — status must be one of open|closed|all.
+user: List issues with status closed.
+tools:
+  - name: list_issues
+    description: List issues filtered by status
+    parameters:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [open, closed, all]
+          description: Issue status filter
+      required: [status]
+      additionalProperties: false
+expect:
+  tool_name: list_issues
+  args: { status: closed }
+mock:
+  mode: tool_calls
+  tool_name: list_issues
+  args: { status: closed }
