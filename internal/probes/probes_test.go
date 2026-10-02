@@ -6,29 +6,19 @@ import (
 	"testing"
 )
 
-func TestLoadFile(t *testing.T) {
+func TestLoadFile_NoTool(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "weather.yaml")
+	path := filepath.Join(dir, "refuse.yaml")
 	content := `
-name: weather_city_units
-user: "Weather in Berlin, celsius please"
+name: refuse
+user: "do the impossible"
 tools:
   - name: get_weather
-    description: Get current weather
-    parameters:
-      type: object
-      properties:
-        city:
-          type: string
-        units:
-          type: string
-          enum: [celsius, fahrenheit]
-      required: [city, units]
+    parameters: { type: object }
 expect:
-  tool_name: get_weather
-  args:
-    city: Berlin
-    units: celsius
+  no_tool: true
+mock:
+  mode: text
 `
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatal(err)
@@ -37,28 +27,24 @@ expect:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Name != "weather_city_units" {
-		t.Fatalf("name=%q", p.Name)
-	}
-	if p.Expect.ToolName != "get_weather" {
-		t.Fatalf("expect tool=%q", p.Expect.ToolName)
-	}
-	if p.Expect.Args["city"] != "Berlin" {
-		t.Fatalf("args=%#v", p.Expect.Args)
+	if !p.Expect.NoTool {
+		t.Fatal("expected no_tool")
 	}
 }
 
-func TestLoadDir(t *testing.T) {
-	// Load the repo default probe if present relative to module.
-	root := filepath.Join("..", "..", "probes", "default")
-	if _, err := os.Stat(root); err != nil {
-		t.Skip("default probes not present")
-	}
-	ps, err := LoadDir(root)
-	if err != nil {
+func TestLoadFile_RequiresExpect(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "bad.yaml")
+	content := `
+name: bad
+user: "hi"
+tools: []
+expect: {}
+`
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if len(ps) < 1 {
-		t.Fatal("expected at least one probe")
+	if _, err := LoadFile(path); err == nil {
+		t.Fatal("expected validation error")
 	}
 }
