@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/chandrasekar-r/toolprobe/internal/baseline"
 	"github.com/chandrasekar-r/toolprobe/internal/client"
 	"github.com/chandrasekar-r/toolprobe/internal/probes"
 	"github.com/chandrasekar-r/toolprobe/internal/report"
@@ -22,15 +23,22 @@ func main() {
 }
 
 var (
-	flagBaseURL string
-	flagAPIKey  string
-	flagModel   string
-	flagJSON    bool
-	flagMock    bool
-	flagProbes  string
-	flagTimeout time.Duration
-	flagRepeat  int
-	flagMinPass float64
+	flagBaseURL        string
+	flagAPIKey         string
+	flagModel          string
+	flagJSON           bool
+	flagMock           bool
+	flagProbes         string
+	flagTimeout        time.Duration
+	flagRepeat         int
+	flagMinPass        float64
+	flagBaseline       string
+	flagWriteBaseline  string
+	flagHTML           string
+	flagLastPath       string
+	flagReportOut      string
+	flagReportLast     bool
+	flagReportLastPath string
 )
 
 var rootCmd = &cobra.Command{
@@ -45,8 +53,16 @@ var runCmd = &cobra.Command{
 	RunE:  runProbes,
 }
 
+var reportCmd = &cobra.Command{
+	Use:   "report",
+	Short: "Render HTML scorecard from a saved JSON report",
+	RunE:  runReport,
+}
+
 func init() {
 	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(reportCmd)
+
 	runCmd.Flags().StringVar(&flagBaseURL, "base-url", envOr("TOOLPROBE_BASE_URL", ""), "OpenAI-compatible API base URL (e.g. https://api.openai.com/v1)")
 	runCmd.Flags().StringVar(&flagAPIKey, "api-key", envOr("TOOLPROBE_API_KEY", ""), "API key (or TOOLPROBE_API_KEY)")
 	runCmd.Flags().StringVar(&flagModel, "model", envOr("TOOLPROBE_MODEL", "gpt-4o-mini"), "Model name")
@@ -56,6 +72,14 @@ func init() {
 	runCmd.Flags().DurationVar(&flagTimeout, "timeout", 60*time.Second, "Per-probe timeout")
 	runCmd.Flags().IntVar(&flagRepeat, "repeat", 1, "Run each probe N times (for flaky live APIs)")
 	runCmd.Flags().Float64Var(&flagMinPass, "min-pass", 1.0, "Minimum pass rate (0-1) required to exit 0")
+	runCmd.Flags().StringVar(&flagBaseline, "baseline", "", "Compare against baseline JSON; fail on regression")
+	runCmd.Flags().StringVar(&flagWriteBaseline, "write-baseline", "", "Write current results as baseline JSON")
+	runCmd.Flags().StringVar(&flagHTML, "html", "", "Also write HTML scorecard to this path (e.g. scorecard.html)")
+	runCmd.Flags().StringVar(&flagLastPath, "last", report.DefaultLastPath, "Where to save the last JSON report")
+
+	reportCmd.Flags().BoolVar(&flagReportLast, "last", true, "Use the last saved JSON report (.toolprobe/last-report.json)")
+	reportCmd.Flags().StringVar(&flagReportLastPath, "from", "", "JSON report path (overrides --last default)")
+	reportCmd.Flags().StringVar(&flagReportOut, "out", report.DefaultScorecardPath, "HTML scorecard output path")
 }
 
 func envOr(key, def string) string {
@@ -125,6 +149,48 @@ func runProbes(cmd *cobra.Command, args []string) error {
 		Results:     results,
 	}
 
+	if flagLastPath != "" {
+		if err := report.SaveJSON(flagLastPath, rep); err != nil {
+			return fmt.Errorf("save last report: %w", err)
+		}
+	}
+
+	if flagHTML != "" {
+		if err := report.SaveHTML(flagHTML, rep); err != nil {
+			return fmt.Errorf("write html: %w", err)
+		}
+		if !flagJSON {
+			fmt.Fprintf(os.Stderr, "wrote %s\n", flagHTML)
+		}
+	}
+
+	if flagWriteBaseline != "" {
+		b := baseline.FromReport(rep)
+		if err := baseline.Save(flagWriteBaseline, b); err != nil {
+			return fmt.Errorf("write baseline: %w", err)
+		}
+		if !flagJSON {
+			fmt.Fprintf(os.Stderr, "wrote baseline %s\n", flagWriteBaseline)
+		}
+	}
+
+	baselineFailed := false
+	if flagBaseline != "" {
+		base, err := baseline.Load(flagBaseline)
+		if err != nil {
+			return fmt.Errorf("load baseline: %w", err)
+		}
+		diff := baseline.Compare(*base, rep)
+		if !diff.OK {
+			baselineFailed = true
+			for _, m := range diff.Messages {
+				fmt.Fprintf(os.Stderr, "BASELINE: %s\n", m)
+			}
+		} else if !flagJSON {
+			fmt.Fprintf(os.Stderr, "baseline OK (%s)\n", flagBaseline)
+		}
+	}
+
 	if flagJSON {
 		if err := report.WriteJSON(os.Stdout, rep); err != nil {
 			return err
@@ -134,8 +200,32 @@ func runProbes(cmd *cobra.Command, args []string) error {
 			sum.Passed, sum.Total, sum.PassRate*100, sum.AvgLatency, flagMinPass*100)
 	}
 
-	if sum.PassRate < flagMinPass {
+	if sum.PassRate < flagMinPass || baselineFailed {
 		os.Exit(1)
 	}
+	return nil
+}
+
+func runReport(cmd *cobra.Command, args []string) error {
+	path := flagReportLastPath
+	if path == "" {
+		if flagReportLast {
+			path = report.DefaultLastPath
+		} else {
+			return fmt.Errorf("provide --last or --from <report.json>")
+		}
+	}
+	r, err := report.LoadJSON(path)
+	if err != nil {
+		return fmt.Errorf("load report %s: %w (run `toolprobe run` first)", path, err)
+	}
+	out := flagReportOut
+	if out == "" {
+		out = report.DefaultScorecardPath
+	}
+	if err := report.SaveHTML(out, *r); err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "wrote %s from %s\n", out, path)
 	return nil
 }
