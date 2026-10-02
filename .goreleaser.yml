@@ -33,7 +33,7 @@ builds:
 
 archives:
   - id: toolprobe
-    builds:
+    ids:
       - toolprobe
     formats:
       - tar.gz
