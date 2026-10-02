@@ -1,0 +1,22 @@
+name: optional_units_omitted
+description: Required city only; units is optional and may be omitted.
+system: >
+  Call get_weather with city. Only include units if the user specifies them.
+user: What's the weather in Oslo? (no units mentioned)
+tools:
+  - name: get_weather
+    description: Get weather; units optional
+    parameters:
+      type: object
+      properties:
+        city: { type: string }
+        units: { type: string, enum: [celsius, fahrenheit] }
+      required: [city]
+      additionalProperties: false
+expect:
+  tool_name: get_weather
+  args: { city: Oslo }
+mock:
+  mode: tool_calls
+  tool_name: get_weather
+  args: { city: Oslo }
