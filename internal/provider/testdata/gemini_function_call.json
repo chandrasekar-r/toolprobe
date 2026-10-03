@@ -1,0 +1,19 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "functionCall": {
+              "name": "get_weather",
+              "args": { "city": "Berlin", "units": "celsius" },
+              "id": "fc_fixture"
+            }
+          }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ]
+}

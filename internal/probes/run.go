@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/chandrasekar-r/toolprobe/internal/client"
+	"github.com/chandrasekar-r/toolprobe/internal/provider"
 )
 
-// Runner executes probes against a chat client.
+// Runner executes probes against a chat client or a native provider.
 type Runner struct {
-	Client *client.Client
-	Model  string
+	Client   *client.Client
+	Provider provider.Provider
+	Model    string
 }
 
 // Run executes a single probe and returns the result.
@@ -23,43 +25,23 @@ func (r *Runner) Run(ctx context.Context, p *Probe) ProbeResult {
 		Expected: p.Expect,
 	}
 
-	var resp *client.ChatResponse
-	var err error
-
-	if r.Client != nil && r.Client.Mock {
-		resp, err = SynthesizeMock(p)
-	} else {
-		tools, terr := toClientTools(p.Tools)
-		if terr != nil {
-			result.Error = terr.Error()
-			result.Latency = time.Since(start)
-			result.LatencyMs = float64(result.Latency.Microseconds()) / 1000.0
-			return result
-		}
-		msgs := []client.Message{}
-		if p.System != "" {
-			msgs = append(msgs, client.Message{Role: "system", Content: p.System})
-		}
-		msgs = append(msgs, client.Message{Role: "user", Content: p.User})
-		resp, err = r.Client.ChatCompletion(ctx, client.ChatRequest{
-			Model:    r.Model,
-			Messages: msgs,
-			Tools:    tools,
-		})
-	}
-
+	calls, warning, err := r.invoke(ctx, p)
 	result.Latency = time.Since(start)
 	result.LatencyMs = float64(result.Latency.Microseconds()) / 1000.0
+	finish := func() ProbeResult {
+		if !result.Passed && warning != "" {
+			if result.Error != "" {
+				result.Error += "; " + warning
+			} else {
+				result.Error = warning
+			}
+		}
+		return result
+	}
 	if err != nil {
 		result.Error = err.Error()
-		return result
+		return finish()
 	}
-	if resp == nil || len(resp.Choices) == 0 {
-		result.Error = "no choices in response"
-		return result
-	}
-
-	calls := resp.Choices[0].Message.ToolCalls
 	if len(calls) > 0 {
 		result.ToolName = calls[0].Function.Name
 		result.ToolArgs = calls[0].Function.Arguments
@@ -67,49 +49,132 @@ func (r *Runner) Run(ctx context.Context, p *Probe) ProbeResult {
 
 	if p.Expect.MaxLatencyMs > 0 && result.LatencyMs > p.Expect.MaxLatencyMs {
 		result.Error = fmt.Sprintf("latency %.1fms exceeds max_latency_ms %.1f", result.LatencyMs, p.Expect.MaxLatencyMs)
-		return result
+		return finish()
 	}
 
 	if p.Expect.NoTool {
 		if len(calls) > 0 {
 			result.Error = fmt.Sprintf("expected no tool calls, got %q", calls[0].Function.Name)
-			return result
+			return finish()
 		}
 		result.Passed = true
-		return result
+		return finish()
 	}
 
 	if len(p.Expect.Calls) > 0 {
 		if err := matchMultiCalls(calls, p.Expect.Calls); err != nil {
 			result.Error = err.Error()
-			return result
+			return finish()
 		}
 		result.Passed = true
-		return result
+		return finish()
 	}
 
 	// Single tool call expectation.
 	if len(calls) == 0 {
 		result.Error = "model returned no tool calls"
-		return result
+		return finish()
 	}
 	call := calls[0]
 	if call.Function.Name != p.Expect.ToolName {
 		result.Error = fmt.Sprintf("tool name: got %q want %q", call.Function.Name, p.Expect.ToolName)
-		return result
+		return finish()
 	}
 	var gotArgs map[string]interface{}
 	if err := json.Unmarshal([]byte(call.Function.Arguments), &gotArgs); err != nil {
 		result.Error = fmt.Sprintf("tool args not valid JSON: %v", err)
-		return result
+		return finish()
 	}
 	if !argsMatch(gotArgs, p.Expect.Args) {
 		want, _ := json.Marshal(p.Expect.Args)
 		result.Error = fmt.Sprintf("tool args mismatch: got %s want %s", call.Function.Arguments, string(want))
-		return result
+		return finish()
 	}
 	result.Passed = true
-	return result
+	return finish()
+}
+
+func (r *Runner) invoke(ctx context.Context, p *Probe) ([]client.ToolCall, string, error) {
+	if r.Client != nil && r.Client.Mock {
+		resp, err := SynthesizeMock(p)
+		if err != nil {
+			return nil, "", err
+		}
+		if resp == nil || len(resp.Choices) == 0 {
+			return nil, "", fmt.Errorf("no choices in response")
+		}
+		return resp.Choices[0].Message.ToolCalls, "", nil
+	}
+	if r.Provider != nil {
+		res, err := r.Provider.Complete(ctx, provider.Turn{
+			Model:  r.Model,
+			System: p.System,
+			User:   p.User,
+			Tools:  toProviderTools(p.Tools),
+		})
+		if err != nil {
+			return nil, "", err
+		}
+		if res == nil {
+			return nil, "", fmt.Errorf("no response")
+		}
+		return fromProviderCalls(res.ToolCalls), res.Warning, nil
+	}
+	if r.Client == nil {
+		return nil, "", fmt.Errorf("no provider configured")
+	}
+	tools, err := toClientTools(p.Tools)
+	if err != nil {
+		return nil, "", err
+	}
+	msgs := []client.Message{}
+	if p.System != "" {
+		msgs = append(msgs, client.Message{Role: "system", Content: p.System})
+	}
+	msgs = append(msgs, client.Message{Role: "user", Content: p.User})
+	resp, err := r.Client.ChatCompletion(ctx, client.ChatRequest{
+		Model:    r.Model,
+		Messages: msgs,
+		Tools:    tools,
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	if resp == nil || len(resp.Choices) == 0 {
+		return nil, "", fmt.Errorf("no choices in response")
+	}
+	return resp.Choices[0].Message.ToolCalls, "", nil
+}
+
+func toProviderTools(defs []ToolDef) []provider.Tool {
+	out := make([]provider.Tool, 0, len(defs))
+	for _, d := range defs {
+		out = append(out, provider.Tool{
+			Name:        d.Name,
+			Description: d.Description,
+			Parameters:  d.Parameters,
+		})
+	}
+	return out
+}
+
+func fromProviderCalls(calls []provider.Call) []client.ToolCall {
+	out := make([]client.ToolCall, 0, len(calls))
+	for i, c := range calls {
+		id := c.ID
+		if id == "" {
+			id = fmt.Sprintf("call_%d", i)
+		}
+		out = append(out, client.ToolCall{
+			ID:   id,
+			Type: "function",
+			Function: client.FunctionCall{
+				Name:      c.Name,
+				Arguments: c.Arguments,
+			},
+		})
+	}
+	return out
 }
 
 func matchMultiCalls(got []client.ToolCall, want []ExpectCall) error {

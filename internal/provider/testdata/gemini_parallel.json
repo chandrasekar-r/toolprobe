@@ -1,0 +1,14 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          { "functionCall": { "name": "get_weather", "args": { "city": "Berlin", "units": "celsius" } } },
+          { "functionCall": { "name": "get_weather", "args": { "city": "Paris", "units": "celsius" } } }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ]
+}

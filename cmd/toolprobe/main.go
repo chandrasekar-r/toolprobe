@@ -12,6 +12,7 @@ import (
 	"github.com/chandrasekar-r/toolprobe/internal/baseline"
 	"github.com/chandrasekar-r/toolprobe/internal/client"
 	"github.com/chandrasekar-r/toolprobe/internal/probes"
+	"github.com/chandrasekar-r/toolprobe/internal/provider"
 	"github.com/chandrasekar-r/toolprobe/internal/report"
 	"github.com/chandrasekar-r/toolprobe/internal/score"
 )
@@ -23,8 +24,10 @@ func main() {
 }
 
 var (
+	flagProvider       string
 	flagBaseURL        string
 	flagAPIKey         string
+	flagAccountID      string
 	flagModel          string
 	flagJSON           bool
 	flagMock           bool
@@ -43,8 +46,10 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "toolprobe",
-	Short: "CI for LLM tool calling — probe OpenAI-compatible APIs",
-	Long:  "toolprobe runs YAML probes against OpenAI-compatible chat/completions endpoints and asserts correct tool names and JSON arguments.",
+	Short: "CI for LLM tool calling — probe OpenAI, Anthropic, Gemini, and Workers AI",
+	Long: `toolprobe runs YAML probes against native tool-calling APIs and asserts correct tool names and JSON arguments.
+
+Providers: openai (chat/completions), anthropic (Messages tool use), gemini (generateContent function calling), cloudflare (Workers AI /ai/run). API keys come from flags or environment variables. --mock never calls the network.`,
 }
 
 var runCmd = &cobra.Command{
@@ -63,9 +68,11 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(reportCmd)
 
-	runCmd.Flags().StringVar(&flagBaseURL, "base-url", envOr("TOOLPROBE_BASE_URL", ""), "OpenAI-compatible API base URL (e.g. https://api.openai.com/v1)")
-	runCmd.Flags().StringVar(&flagAPIKey, "api-key", envOr("TOOLPROBE_API_KEY", ""), "API key (or TOOLPROBE_API_KEY)")
-	runCmd.Flags().StringVar(&flagModel, "model", envOr("TOOLPROBE_MODEL", "gpt-4o-mini"), "Model name")
+	runCmd.Flags().StringVar(&flagProvider, "provider", envOr("TOOLPROBE_PROVIDER", provider.OpenAI), "Provider: openai, anthropic, gemini, cloudflare (aliases: claude, google, workers-ai)")
+	runCmd.Flags().StringVar(&flagBaseURL, "base-url", envOr("TOOLPROBE_BASE_URL", ""), "API origin. OpenAI example: https://api.openai.com/v1. Other providers default to their public origin when omitted")
+	runCmd.Flags().StringVar(&flagAPIKey, "api-key", "", "API key. Overrides provider env vars. Defaults: TOOLPROBE_API_KEY, or ANTHROPIC_API_KEY / GEMINI_API_KEY / CLOUDFLARE_API_TOKEN")
+	runCmd.Flags().StringVar(&flagAccountID, "account-id", "", "Cloudflare account id (or CLOUDFLARE_ACCOUNT_ID / TOOLPROBE_CLOUDFLARE_ACCOUNT_ID)")
+	runCmd.Flags().StringVar(&flagModel, "model", envOr("TOOLPROBE_MODEL", ""), "Model id. OpenAI defaults to gpt-4o-mini. Required for anthropic, gemini, and cloudflare unless --mock")
 	runCmd.Flags().BoolVar(&flagJSON, "json", false, "Emit JSON report to stdout")
 	runCmd.Flags().BoolVar(&flagMock, "mock", false, "Dry-run / mock mode: no network; uses probe.mock")
 	runCmd.Flags().StringVar(&flagProbes, "probes", "probes/default", "Directory of probe YAML files")
@@ -109,9 +116,39 @@ func runProbes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	c := client.New(flagBaseURL, flagAPIKey)
-	c.Mock = flagMock
-	runner := &probes.Runner{Client: c, Model: flagModel}
+	provName, err := provider.Canonical(flagProvider)
+	if err != nil {
+		return err
+	}
+	modelSet := cmd.Flags().Changed("model") || os.Getenv("TOOLPROBE_MODEL") != ""
+	model, err := provider.ResolveModel(provName, flagModel, modelSet, flagMock)
+	if err != nil {
+		return err
+	}
+	apiKey := provider.ResolveAPIKey(provName, flagAPIKey, cmd.Flags().Changed("api-key"))
+	accountID := provider.ResolveAccountID(flagAccountID, cmd.Flags().Changed("account-id"))
+
+	runner := &probes.Runner{Model: model}
+	if flagMock {
+		c := client.New("", "")
+		c.Mock = true
+		runner.Client = c
+	} else {
+		baseURL := flagBaseURL
+		if baseURL == "" {
+			baseURL = provider.DefaultBaseURL(provName)
+		}
+		p, err := provider.New(provider.Config{
+			Provider:  provName,
+			BaseURL:   baseURL,
+			APIKey:    apiKey,
+			AccountID: accountID,
+		})
+		if err != nil {
+			return err
+		}
+		runner.Provider = p
+	}
 
 	ctx := context.Background()
 	results := make([]probes.ProbeResult, 0, len(loaded)*flagRepeat)
@@ -141,7 +178,8 @@ func runProbes(cmd *cobra.Command, args []string) error {
 	sum := score.Aggregate(results)
 	rep := report.Report{
 		GeneratedAt: time.Now().UTC(),
-		Model:       flagModel,
+		Provider:    provName,
+		Model:       model,
 		Mock:        flagMock,
 		Repeat:      flagRepeat,
 		MinPass:     flagMinPass,

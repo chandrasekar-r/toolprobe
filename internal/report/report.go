@@ -25,6 +25,7 @@ const (
 // Report is the full JSON output of a toolprobe run.
 type Report struct {
 	GeneratedAt time.Time            `json:"generated_at"`
+	Provider    string               `json:"provider,omitempty"`
 	Model       string               `json:"model"`
 	Mock        bool                 `json:"mock"`
 	Repeat      int                  `json:"repeat"`
@@ -119,6 +120,11 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 <p class="sub">CI for tool calling — model <code>`)
 	b.WriteString(html.EscapeString(r.Model))
 	b.WriteString(`</code>`)
+	if r.Provider != "" {
+		b.WriteString(` · provider <code>`)
+		b.WriteString(html.EscapeString(r.Provider))
+		b.WriteString(`</code>`)
+	}
 	if r.Mock {
 		b.WriteString(` · <code>mock</code>`)
 	}

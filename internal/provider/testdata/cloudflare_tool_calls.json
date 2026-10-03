@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": {
+    "response": "",
+    "tool_calls": [
+      {
+        "name": "get_weather",
+        "arguments": { "city": "Berlin", "units": "celsius" }
+      }
+    ]
+  }
+}
