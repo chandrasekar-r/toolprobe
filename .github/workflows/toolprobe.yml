@@ -22,6 +22,11 @@ jobs:
             --html scorecard.html
       - name: mock probes with repeat
         run: go run ./cmd/toolprobe run --mock --probes probes/default --repeat 2 --min-pass 1.0
+      - name: provider mocks (no network, no API keys)
+        run: |
+          go run ./cmd/toolprobe run --provider anthropic --mock --probes probes/default --min-pass 1.0 --baseline toolprobe-baseline.json
+          go run ./cmd/toolprobe run --provider gemini --mock --probes probes/default --min-pass 1.0 --baseline toolprobe-baseline.json
+          go run ./cmd/toolprobe run --provider cloudflare --mock --probes probes/default --min-pass 1.0 --baseline toolprobe-baseline.json
       - name: render scorecard from last report
         run: go run ./cmd/toolprobe report --last --out scorecard.html
       - name: upload scorecard

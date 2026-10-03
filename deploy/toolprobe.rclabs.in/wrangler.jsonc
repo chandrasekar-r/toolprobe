@@ -1,0 +1,28 @@
+{
+  // Static docs page for toolprobe.rclabs.in.
+  // No AI binding, KV, R2, containers, or secrets. This Worker does not proxy
+  // provider APIs and does not spend Workers AI quota.
+  "name": "toolprobe",
+  "compatibility_date": "2026-10-03",
+  "workers_dev": false,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    }
+  },
+  "assets": {
+    "directory": "./public"
+  },
+  "routes": [
+    {
+      "pattern": "toolprobe.rclabs.in",
+      "custom_domain": true
+    }
+  ]
+}

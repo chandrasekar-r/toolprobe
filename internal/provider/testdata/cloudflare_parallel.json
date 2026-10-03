@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "errors": [],
+  "result": {
+    "response": "",
+    "tool_calls": [
+      { "name": "get_weather", "arguments": { "city": "Berlin", "units": "celsius" } },
+      { "name": "get_weather", "arguments": "{\"city\":\"Paris\",\"units\":\"celsius\"}" }
+    ]
+  }
+}

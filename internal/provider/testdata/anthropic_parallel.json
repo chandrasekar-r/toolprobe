@@ -1,0 +1,20 @@
+{
+  "id": "msg_parallel",
+  "type": "message",
+  "role": "assistant",
+  "stop_reason": "tool_use",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_a",
+      "name": "get_weather",
+      "input": { "city": "Berlin", "units": "celsius" }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_b",
+      "name": "get_weather",
+      "input": { "city": "Paris", "units": "celsius" }
+    }
+  ]
+}

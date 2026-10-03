@@ -11,6 +11,24 @@ go test ./...
 go run ./cmd/toolprobe run --mock
 ```
 
+## Providers
+
+`toolprobe run --provider` is `openai` (default), `anthropic`, `gemini`, or `cloudflare`.
+
+- `--mock` stays offline for every provider and replays `probe.mock`. Do not call live models from tests or CI.
+- Native HTTP shapes live in `internal/provider/`. Recorded responses are `internal/provider/testdata/`. Add a fixture when you change a request or response field.
+- Do not drop tools to fit a model that cannot call them. Workers AI must return an error when the result is not a tool-calling payload.
+- Do not commit API keys. Read them from the env vars in the README.
+- All default probes run on all four providers. If a new probe truly cannot be expressed on one provider, skip it in the runner with a documented reason and name it in the README coverage section. Do not rename tools that the provider can express.
+
+Mock check for each provider:
+
+```bash
+go run ./cmd/toolprobe run --provider anthropic --mock --baseline toolprobe-baseline.json
+go run ./cmd/toolprobe run --provider gemini --mock --baseline toolprobe-baseline.json
+go run ./cmd/toolprobe run --provider cloudflare --mock --baseline toolprobe-baseline.json
+```
+
 ## Adding a probe
 
 1. Drop a YAML file under `probes/default/` (see existing files).

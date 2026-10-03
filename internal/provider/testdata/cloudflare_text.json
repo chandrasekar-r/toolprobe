@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "errors": [],
+  "result": {
+    "response": "I don't have a flight booking tool.",
+    "tool_calls": []
+  }
+}
