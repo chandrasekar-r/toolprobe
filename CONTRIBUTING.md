@@ -15,7 +15,7 @@ go run ./cmd/toolprobe run --mock
 
 `toolprobe run --provider` is `openai` (default), `anthropic`, `gemini`, or `cloudflare`.
 
-- `--mock` stays offline for every provider and replays `probe.mock`. Do not call live models from tests or CI.
+- OpenAI `--mock` replays `probe.mock` in-process and does not build an HTTP request. Anthropic, Gemini, and Cloudflare `--mock` build that provider's native request and parse a local fixture through the provider client. The transport does not dial. A passing mock run is not a live provider result. Do not call live models from tests or CI.
 - Native HTTP shapes live in `internal/provider/`. Recorded responses are `internal/provider/testdata/`. Add a fixture when you change a request or response field.
 - Do not drop tools to fit a model that cannot call them. Workers AI must return an error when the result is not a tool-calling payload.
 - Do not commit API keys. Read them from the env vars in the README.

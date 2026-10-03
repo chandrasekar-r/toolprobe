@@ -128,11 +128,17 @@ func runProbes(cmd *cobra.Command, args []string) error {
 	apiKey := provider.ResolveAPIKey(provName, flagAPIKey, cmd.Flags().Changed("api-key"))
 	accountID := provider.ResolveAccountID(flagAccountID, cmd.Flags().Changed("account-id"))
 
-	runner := &probes.Runner{Model: model}
-	if flagMock {
+	var runner *probes.Runner
+	if flagMock && provName == provider.OpenAI {
 		c := client.New("", "")
 		c.Mock = true
-		runner.Client = c
+		runner = &probes.Runner{Client: c, Model: model}
+	} else if flagMock {
+		runner, err = probes.NewNativeMockRunner(provName, model)
+		if err != nil {
+			return err
+		}
+		model = runner.Model
 	} else {
 		baseURL := flagBaseURL
 		if baseURL == "" {
@@ -147,7 +153,7 @@ func runProbes(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		runner.Provider = p
+		runner = &probes.Runner{Provider: p, Model: model}
 	}
 
 	ctx := context.Background()
