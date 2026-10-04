@@ -8,39 +8,98 @@
 :root { --bg:#0f1419; --card:#1a2332; --text:#e7ecf3; --muted:#8b9bb4; --line:#2a3548; --ok:#3dd68c; }
 * { box-sizing: border-box; }
 body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
-main { max-width: 760px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+main { max-width: 860px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
 h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
-h2 { font-size: 1.05rem; margin: 1.75rem 0 .5rem; }
-p, li { color: var(--text); }
-.sub { color: var(--muted); margin-top: 0; }
+h2 { font-size: 1.05rem; margin: 0 0 .35rem; }
+p { color: var(--text); }
+.sub, .note { color: var(--muted); margin-top: 0; }
 code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 pre { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; overflow: auto; font-size: .85rem; }
 a { color: var(--ok); }
+.path { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1rem 1.15rem; margin: 1rem 0; }
+.badge { display: inline-block; margin: 0 0 .55rem; padding: .12rem .55rem; border-radius: 999px; border: 1px solid var(--ok); color: var(--ok); font-size: .75rem; letter-spacing: .03em; text-transform: uppercase; }
+.track { position: relative; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .6rem; margin-top: .8rem; }
+.node { border: 1px solid var(--line); border-radius: 10px; padding: .75rem .7rem; min-height: 5.6rem; background: #121a24; }
+.node strong { display: block; margin-bottom: .2rem; }
+.node span { display: block; color: var(--muted); font-size: .86rem; }
+.rail { position: absolute; left: 8%; right: 8%; top: 1.15rem; height: 2px; background: var(--line); }
+.dot { position: absolute; top: .85rem; width: .7rem; height: .7rem; margin-left: -.35rem; border-radius: 50%; background: var(--ok); animation: travel 5.4s linear infinite; }
+.path:nth-of-type(2) .dot { animation-delay: -1.8s; }
+.path:nth-of-type(3) .dot { animation-delay: -3.6s; }
+@keyframes travel {
+  0% { left: 12%; }
+  100% { left: 88%; }
+}
+.aside { border-style: dashed; }
+.aside .node { opacity: .72; }
+@media (max-width: 720px) {
+  .track { grid-template-columns: 1fr; }
+  .rail, .dot { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot { animation: none; left: 12%; }
+}
 </style>
 </head>
 <body>
 <main>
 <h1>toolprobe</h1>
-<p class="sub">CI for tool calling. This page is static. It does not call OpenAI, Anthropic, Gemini, or Workers AI, and it does not proxy those APIs.</p>
+<p class="sub">CI for tool calling. This page is static HTML and CSS. It does not call or proxy any provider.</p>
 <p>Source: <a href="https://github.com/chandrasekar-r/toolprobe">github.com/chandrasekar-r/toolprobe</a></p>
 
-<h2>Offline mock</h2>
-<p>A green <code>toolprobe run --mock</code> is not a live provider result. Nothing is dialed.</p>
-<p>For <code>anthropic</code>, <code>gemini</code>, and <code>cloudflare</code>, <code>--mock</code> builds that provider's native request and parses a local fixture through the same client. The HTTP transport returns the fixture in process and does not dial. If <code>--model</code> is omitted, the request uses the placeholder id <code>toolprobe-mock</code>, which is not a published model.</p>
-<p>OpenAI <code>--mock</code> stays on the in-process synthesizer. It does not build an HTTP request.</p>
+<h2 style="margin-top:1.75rem">How a run moves</h2>
+<p class="note">Three paths. Each one is labeled as not a live result. A live run is a different path, and this page does not show one.</p>
+
+<section class="path">
+  <p class="badge">Not a live result</p>
+  <h2>This page</h2>
+  <p>This page does not call or proxy any provider.</p>
+  <div class="track">
+    <div class="rail"></div>
+    <span class="dot"></span>
+    <div class="node"><strong>Browser</strong><span>Reads this file only.</span></div>
+    <div class="node"><strong>No request</strong><span>No fetch, no form, no proxy.</span></div>
+    <div class="node"><strong>No provider</strong><span>OpenAI, Anthropic, Gemini, and Workers AI are not contacted.</span></div>
+  </div>
+</section>
+
+<section class="path">
+  <p class="badge">Not a live result</p>
+  <h2>OpenAI <code>--mock</code></h2>
+  <p>OpenAI <code>--mock</code> stays in process and does not build an HTTP request.</p>
+  <div class="track">
+    <div class="rail"></div>
+    <span class="dot"></span>
+    <div class="node"><strong>Probe file</strong><span>The <code>mock:</code> block is the whole reply.</span></div>
+    <div class="node"><strong>In process</strong><span>The synthesizer builds the result locally.</span></div>
+    <div class="node"><strong>No HTTP</strong><span>No chat/completions request is built or sent.</span></div>
+  </div>
+</section>
+
+<section class="path">
+  <p class="badge">Not a live result</p>
+  <h2><code>anthropic</code>, <code>gemini</code>, and <code>cloudflare</code> <code>--mock</code></h2>
+  <p><code>--mock</code> builds that provider's native request and parses a local fixture. The transport does not dial.</p>
+  <div class="track">
+    <div class="rail"></div>
+    <span class="dot"></span>
+    <div class="node"><strong>Native request</strong><span>Messages, generateContent, or <code>/ai/run</code> JSON is built in the client.</span></div>
+    <div class="node"><strong>Local fixture</strong><span>The reply is prepared in process from the probe.</span></div>
+    <div class="node"><strong>No dial</strong><span>RoundTrip returns that fixture and does not open a connection.</span></div>
+  </div>
+</section>
+
+<section class="path aside">
+  <p class="badge">Different path</p>
+  <h2>Live run</h2>
+  <p>A live run would send the native request to the provider. This page does not take that path, and it does not report that a live run happened.</p>
+</section>
+
 <pre>toolprobe run --mock --probes probes/default
 toolprobe run --provider anthropic --mock --probes probes/default
 toolprobe run --provider gemini --mock --probes probes/default
 toolprobe run --provider cloudflare --mock --probes probes/default</pre>
-
-<h2>Clients</h2>
-<p>The CLI has a client for each of these APIs. The commands above exercise the offline mock path only.</p>
-<ul>
-<li><code>openai</code> — OpenAI-compatible <code>POST {base}/chat/completions</code>.</li>
-<li><code>anthropic</code> — Anthropic Messages <code>POST /v1/messages</code> tool use.</li>
-<li><code>gemini</code> — Gemini <code>generateContent</code> function calling.</li>
-<li><code>cloudflare</code> — Workers AI <code>POST /accounts/{account_id}/ai/run/{model}</code>.</li>
-</ul>
+<p class="note">Those commands are the offline paths above. A green mock run is not a live provider result.</p>
 </main>
 </body>
 </html>
