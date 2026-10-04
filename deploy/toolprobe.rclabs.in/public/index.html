@@ -79,13 +79,13 @@ a { color: var(--ok); }
 <section class="path">
   <p class="badge">Not a live result</p>
   <h2><code>anthropic</code>, <code>gemini</code>, and <code>cloudflare</code> <code>--mock</code></h2>
-  <p><code>--mock</code> builds that provider's native request and parses a local fixture. The transport does not dial.</p>
+  <p><code>--mock</code> builds that provider's native request and parses a local fixture. The transport does not dial, and it does not validate the JSON.</p>
   <div class="track">
     <div class="rail"></div>
     <span class="dot"></span>
     <div class="node"><strong>Native request</strong><span>Messages, generateContent, or <code>/ai/run</code> JSON is built in the client.</span></div>
     <div class="node"><strong>Local fixture</strong><span>The reply is prepared in process from the probe.</span></div>
-    <div class="node"><strong>No dial</strong><span>RoundTrip returns that fixture and does not open a connection.</span></div>
+    <div class="node"><strong>No dial</strong><span>RoundTrip returns the prepared fixture. It does not dial, and it does not validate the JSON.</span></div>
   </div>
 </section>
 
