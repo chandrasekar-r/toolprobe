@@ -15,6 +15,9 @@ type Runner struct {
 	Client   *client.Client
 	Provider provider.Provider
 	Model    string
+	// Offline, when set, is the no-dial transport for a native --mock run.
+	// Each probe prepares a fixture on it before Provider.Complete.
+	Offline *provider.OfflineTransport
 }
 
 // Run executes a single probe and returns the result.
@@ -95,7 +98,20 @@ func (r *Runner) Run(ctx context.Context, p *Probe) ProbeResult {
 }
 
 func (r *Runner) invoke(ctx context.Context, p *Probe) ([]client.ToolCall, string, error) {
-	if r.Client != nil && r.Client.Mock {
+	if r.Offline != nil {
+		if r.Provider == nil {
+			return nil, "", fmt.Errorf("native mock runner has no provider client")
+		}
+		fixture, err := nativeFixture(r.Provider.Name(), p)
+		if err != nil {
+			return nil, "", err
+		}
+		if p.Mock != nil && p.Mock.LatencyMs > 0 {
+			time.Sleep(time.Duration(p.Mock.LatencyMs) * time.Millisecond)
+		}
+		r.Offline.Prepare(200, fixture, len(p.Tools))
+	}
+	if r.Offline == nil && r.Client != nil && r.Client.Mock {
 		resp, err := SynthesizeMock(p)
 		if err != nil {
 			return nil, "", err

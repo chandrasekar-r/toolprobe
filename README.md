@@ -39,7 +39,11 @@ https://github.com/chandrasekar-r/toolprobe/releases — checksums in `checksums
 
 ## Quick start (mock)
 
-`--mock` never opens a network connection. It replays each probe's `mock:` block, for every provider. The checked-in baseline is the OpenAI mock run; the same probes pass for the other providers because expectations do not change.
+`--mock` never dials and never calls a live model. A green mock run is not a live provider result.
+
+OpenAI `--mock` (the default) stays on the original in-process synthesizer: `probe.mock` becomes a chat response with no HTTP request. That is the checked-in baseline.
+
+Anthropic, Gemini, and Cloudflare `--mock` use those providers' clients. Each probe builds that provider's native request, and the client parses a fixture response encoded from `probe.mock` in that provider's JSON. The HTTP transport returns the fixture in-process and does not dial. When `--model` is omitted, the request uses the placeholder id `toolprobe-mock`, which is not a published model.
 
 ```bash
 toolprobe run --mock --probes probes/default
@@ -48,7 +52,7 @@ toolprobe run --mock --repeat 3 --min-pass 1.0 \
   --html scorecard.html
 toolprobe report --last            # → scorecard.html from last JSON run
 
-# Same probes, provider selected, still no network:
+# Native client, local fixture, no network and no live model call:
 toolprobe run --provider anthropic --mock --probes probes/default \
   --baseline toolprobe-baseline.json
 toolprobe run --provider gemini --mock --probes probes/default \
@@ -131,7 +135,7 @@ toolprobe run \
   --min-pass 0.8
 ```
 
-Cloudflare Workers AI (no Workers AI call is made by tests or by `--mock`):
+Cloudflare Workers AI live run (tests and `--mock` do not call Workers AI):
 
 ```bash
 export CLOUDFLARE_API_TOKEN=...
