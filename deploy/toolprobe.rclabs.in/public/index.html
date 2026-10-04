@@ -21,23 +21,22 @@ a { color: var(--ok); }
 <body>
 <main>
 <h1>toolprobe</h1>
-<p class="sub">CI for tool calling. This page is static. It does not proxy model APIs and it does not use Workers AI.</p>
+<p class="sub">CI for tool calling. This page is static. It does not call OpenAI, Anthropic, Gemini, or Workers AI, and it does not proxy those APIs.</p>
 <p>Source: <a href="https://github.com/chandrasekar-r/toolprobe">github.com/chandrasekar-r/toolprobe</a></p>
 
-<h2>Mock (no network)</h2>
-<pre>toolprobe run --mock --probes probes/default
-toolprobe run --provider anthropic --mock --probes probes/default
-toolprobe run --provider gemini --mock --probes probes/default
-toolprobe run --provider cloudflare --mock --probes probes/default</pre>
-
-<h2>Providers</h2>
+<h2>What the CLI includes</h2>
+<p>The released CLI has a client for each of these APIs:</p>
 <ul>
-<li><code>openai</code> — <code>POST {base}/chat/completions</code>. Key: <code>TOOLPROBE_API_KEY</code> or <code>OPENAI_API_KEY</code>.</li>
-<li><code>anthropic</code> — Messages <code>/v1/messages</code> tool use. Key: <code>ANTHROPIC_API_KEY</code>.</li>
-<li><code>gemini</code> — <code>generateContent</code> function calling. Key: <code>GEMINI_API_KEY</code>. Pass <code>--model</code> yourself.</li>
-<li><code>cloudflare</code> — Workers AI <code>/ai/run</code>. Key: <code>CLOUDFLARE_API_TOKEN</code>. Account: <code>CLOUDFLARE_ACCOUNT_ID</code>.</li>
+<li><code>openai</code> — OpenAI-compatible <code>POST {base}/chat/completions</code>.</li>
+<li><code>anthropic</code> — Anthropic Messages <code>POST /v1/messages</code> tool use.</li>
+<li><code>gemini</code> — Gemini <code>generateContent</code> function calling.</li>
+<li><code>cloudflare</code> — Workers AI <code>POST /accounts/{account_id}/ai/run/{model}</code>.</li>
 </ul>
-<p>All 17 default probes run on each provider. None are skipped.</p>
+<p>Tests for the Anthropic, Gemini, and Workers AI clients use local fixtures. They do not call those providers.</p>
+
+<h2>Mock</h2>
+<p>A green <code>toolprobe run --mock</code> is not a live provider result. <code>--mock</code> replays each probe's <code>mock:</code> block in process. It does not call the Anthropic, Gemini, or Workers AI clients.</p>
+<pre>toolprobe run --mock --probes probes/default</pre>
 </main>
 </body>
 </html>
